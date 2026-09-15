@@ -3,20 +3,40 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Welcome</title>
+<title>Asteroids</title>
 <style>
-*{box-sizing:border-box}body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#fff;background:linear-gradient(135deg,#0f172a,#312e81,#0f766e);display:grid;place-items:center;overflow:hidden}.glow{position:fixed;width:420px;height:420px;border-radius:50%;background:rgba(125,211,252,.2);filter:blur(80px);top:-120px;left:-100px}.glow2{position:fixed;width:380px;height:380px;border-radius:50%;background:rgba(216,180,254,.18);filter:blur(80px);right:-100px;bottom:-100px}.card{position:relative;width:min(720px,calc(100% - 40px));padding:70px 45px;text-align:center;border:1px solid rgba(255,255,255,.2);border-radius:30px;background:rgba(255,255,255,.1);backdrop-filter:blur(18px);box-shadow:0 30px 80px rgba(0,0,0,.3)}.icon{font-size:3rem;margin-bottom:15px}h1{margin:0;font-size:clamp(3.5rem,10vw,6rem);letter-spacing:-.06em;line-height:1;background:linear-gradient(90deg,#fff,#bae6fd,#ddd6fe);-webkit-background-clip:text;background-clip:text;color:transparent}h2{font-size:clamp(1.3rem,3vw,2rem);margin:25px 0 12px}p{margin:0 auto;max-width:500px;color:#dbeafe;font-size:1.1rem;line-height:1.7}.button{display:inline-block;margin-top:32px;padding:14px 24px;border-radius:14px;background:#fff;color:#172033;text-decoration:none;font-weight:700;transition:.2s}.button:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(0,0,0,.25)}footer{margin-top:35px;color:#bfdbfe;font-size:.85rem}@media(prefers-reduced-motion:no-preference){.card{animation:in .7s ease-out}.icon{animation:bob 3s ease-in-out infinite}}@keyframes in{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}@keyframes bob{50%{transform:translateY(-7px)}}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050816;color:#fff;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}canvas{display:block;width:100%;height:100%;touch-action:none}.hud{position:fixed;top:18px;left:18px;right:18px;display:flex;justify-content:space-between;pointer-events:none;font-weight:700;text-shadow:0 2px 8px #000}.help{position:fixed;bottom:16px;left:0;right:0;text-align:center;color:#aeb9d6;font-size:.85rem;pointer-events:none}.overlay{position:fixed;inset:0;display:grid;place-items:center;background:rgba(3,6,20,.48);text-align:center}.panel{padding:32px 38px;border:1px solid #334064;border-radius:20px;background:rgba(12,18,42,.88);box-shadow:0 20px 70px #0008}.panel h1{margin:0 0 8px;font-size:clamp(2.5rem,9vw,5rem);letter-spacing:-.05em}.panel p{margin:0 0 22px;color:#aeb9d6}.button{border:0;border-radius:10px;padding:12px 22px;background:#fff;color:#080d20;font:inherit;font-weight:800;cursor:pointer}.hidden{display:none}
 </style>
 </head>
 <body>
-<div class="glow"></div><div class="glow2"></div>
-<main class="card">
-<div class="icon">👋</div>
-<h1>Welcome!</h1>
-<h2>It's great to have you here.</h2>
-<p>This is the <strong>Hello</strong> project — a little space on the web for whatever comes next.</p>
-<a class="button" href="https://github.com/stevencr/hello">Explore the project →</a>
-<footer>Thanks for stopping by.</footer>
-</main>
+<canvas id="game"></canvas>
+<div class="hud"><span id="score">Score: 0</span><span id="lives">Lives: 3</span></div>
+<div class="help">← → rotate &nbsp; • &nbsp; ↑ thrust &nbsp; • &nbsp; Space fire &nbsp; • &nbsp; Tap buttons on mobile</div>
+<div id="overlay" class="overlay"><div class="panel"><h1 id="title">ASTEROIDS</h1><p id="message">Destroy the rocks and survive.</p><button class="button" id="start">Start Game</button></div></div>
+<script>
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+let w,h,dpr,ship,asteroids=[],bullets=[],score=0,lives=3,running=false,last=0,keys={};
+function resize(){dpr=Math.min(devicePixelRatio||1,2);w=innerWidth;h=innerHeight;canvas.width=w*dpr;canvas.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}addEventListener('resize',resize);resize();
+function rnd(a,b){return Math.random()*(b-a)+a}function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function wrap(o){if(o.x<0)o.x+=w;if(o.x>w)o.x-=w;if(o.y<0)o.y+=h;if(o.y>h)o.y-=h}
+function resetShip(){ship={x:w/2,y:h/2,a:-Math.PI/2,vx:0,vy:0,r:14,cool:0,inv:1.8}}
+function makeAsteroid(x,y,r=34){let a=Math.random()*6.28,s=rnd(.5,1.4),n=Math.floor(rnd(8,12));return{x:x??rnd(0,w),y:y??rnd(0,h),r,vx:Math.cos(a)*s,vy:Math.sin(a)*s,rot:rnd(-.03,.03),angle:0,n}}
+function newWave(){asteroids=[];for(let i=0;i<4+Math.min(5,Math.floor(score/100));i++){let a;do{a=makeAsteroid()}while(dist(a,ship)<130);asteroids.push(a)}}
+function start(){score=0;lives=3;bullets=[];resetShip();newWave();running=true;document.getElementById('overlay').classList.add('hidden');last=performance.now();requestAnimationFrame(loop)}
+function end(){running=false;document.getElementById('title').textContent='GAME OVER';document.getElementById('message').textContent=`Final score: ${score}`;document.getElementById('start').textContent='Play Again';document.getElementById('overlay').classList.remove('hidden')}
+function shoot(){if(!running||ship.cool>0)return;bullets.push({x:ship.x+Math.cos(ship.a)*18,y:ship.y+Math.sin(ship.a)*18,vx:Math.cos(ship.a)*7+ship.vx,vy:Math.sin(ship.a)*7+ship.vy,life:55});ship.cool=12}
+function update(dt){let s=dt/16.67;if(keys.ArrowLeft)ship.a-=.075*s;if(keys.ArrowRight)ship.a+=.075*s;if(keys.ArrowUp){ship.vx+=Math.cos(ship.a)*.11*s;ship.vy+=Math.sin(ship.a)*.11*s}ship.vx*=Math.pow(.992,s);ship.vy*=Math.pow(.992,s);ship.x+=ship.vx*s;ship.y+=ship.vy*s;wrap(ship);ship.cool=Math.max(0,ship.cool-1*s);ship.inv=Math.max(0,ship.inv-1*s);
+ bullets.forEach(b=>{b.x+=b.vx*s;b.y+=b.vy*s;b.life-=s;wrap(b)});bullets=bullets.filter(b=>b.life>0);
+ asteroids.forEach(a=>{a.x+=a.vx*s;a.y+=a.vy*s;a.angle+=a.rot*s;wrap(a)});
+ for(let bi=bullets.length-1;bi>=0;bi--){let b=bullets[bi];for(let ai=asteroids.length-1;ai>=0;ai--){let a=asteroids[ai];if(dist(b,a)<a.r){bullets.splice(bi,1);asteroids.splice(ai,1);score+=a.r>22?20:50;if(a.r>22){asteroids.push(makeAsteroid(a.x,a.y,a.r*.55),makeAsteroid(a.x,a.y,a.r*.55))}break}}}
+ if(ship.inv<=0&&asteroids.some(a=>dist(ship,a)<a.r+ship.r)){lives--;ship.inv=2;resetShip();if(lives<=0){end();return}}
+ if(!asteroids.length)newWave();document.getElementById('score').textContent=`Score: ${score}`;document.getElementById('lives').textContent=`Lives: ${lives}`}
+function draw(){ctx.fillStyle='#050816';ctx.fillRect(0,0,w,h);let g=ctx.createRadialGradient(w/2,h/2,0,w/2,h/2,Math.max(w,h)*.7);g.addColorStop(0,'#101a3d');g.addColorStop(1,'#050816');ctx.fillStyle=g;ctx.fillRect(0,0,w,h);ctx.fillStyle='#fff';for(let i=0;i<70;i++){let x=(i*137)%w,y=(i*83)%h;ctx.globalAlpha=.35+(i%4)*.12;ctx.fillRect(x,y,1,1)}ctx.globalAlpha=1;
+ asteroids.forEach(a=>{ctx.save();ctx.translate(a.x,a.y);ctx.rotate(a.angle);ctx.beginPath();for(let i=0;i<a.n;i++){let r=a.r*(.78+((i*17)%23)/100);let x=Math.cos(i*6.28/a.n)*r,y=Math.sin(i*6.28/a.n)*r;i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.closePath();ctx.strokeStyle='#d8def0';ctx.lineWidth=2;ctx.stroke();ctx.restore()});
+ bullets.forEach(b=>{ctx.beginPath();ctx.arc(b.x,b.y,2.5,0,7);ctx.fillStyle='#fff';ctx.fill()});if(ship.inv%0.25<.12)return;ctx.save();ctx.translate(ship.x,ship.y);ctx.rotate(ship.a);ctx.beginPath();ctx.moveTo(19,0);ctx.lineTo(-13,-10);ctx.lineTo(-8,0);ctx.lineTo(-13,10);ctx.closePath();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();if(keys.ArrowUp){ctx.beginPath();ctx.moveTo(-10,-5);ctx.lineTo(-21,0);ctx.lineTo(-10,5);ctx.strokeStyle='#fff';ctx.stroke()}ctx.restore()}
+function loop(t){if(!running)return;let dt=Math.min(32,t-last);last=t;update(dt);draw();if(running)requestAnimationFrame(loop)}
+addEventListener('keydown',e=>{keys[e.key]=true;if(e.code==='Space'){e.preventDefault();shoot()}if(e.key==='Enter'&&!running)start()});addEventListener('keyup',e=>keys[e.key]=false);document.getElementById('start').onclick=start;
+let touchStart=null;canvas.addEventListener('touchstart',e=>{touchStart=e.touches[0];e.preventDefault()},{passive:false});canvas.addEventListener('touchend',e=>{let t=e.changedTouches[0],dx=t.clientX-touchStart.clientX,dy=t.clientY-touchStart.clientY;if(Math.abs(dx)>30)ship.a+=(dx>0?.45:-.45);else if(dy<-30)keys.ArrowUp=true;else shoot();setTimeout(()=>keys.ArrowUp=false,180);e.preventDefault()},{passive:false});
+</script>
 </body>
 </html>
